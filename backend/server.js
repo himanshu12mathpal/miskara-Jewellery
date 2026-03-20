@@ -33,6 +33,7 @@ if (missing.length) {
 connectDB();
 
 const app  = express();
+app.set("trust proxy", 1);
 const isProd = process.env.NODE_ENV === 'production';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
