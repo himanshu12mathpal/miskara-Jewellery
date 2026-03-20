@@ -31,7 +31,7 @@ export default function Feedback() {
             </p>
             <div className="space-y-5">
               {[
-                { icon:'✉', label:'Email', val:'hello@miskara.com' },
+                { icon:'✉', label:'Email', val:'Info.miskara@gmail.com' },
                 { icon:'◷', label:'Response Time', val:'Within 24 hours' },
                 { icon:'✦', label:'Custom Orders', val:'We love making bespoke pieces' },
               ].map(({ icon, label, val }) => (
