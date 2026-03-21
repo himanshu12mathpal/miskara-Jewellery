@@ -22,12 +22,10 @@ const REQUIRED_ENV = [
   'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET',
   'EMAIL_USER', 'EMAIL_PASS', 'ADMIN_EMAIL',
   'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET',
-  'FRONTEND_URL',
 ];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missing.length) {
   console.warn('⚠️  Missing env variables:', missing.join(', '));
-  if (process.env.NODE_ENV === 'production') process.exit(1);
 }
 
 connectDB();
@@ -40,9 +38,13 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // ── CORS — support multiple frontend origins ──
 const getAllowedOrigins = () => {
-  const origins = [];
+  // Always allow production domains
+  const origins = [
+    'https://www.miskara.co',
+    'https://miskara.co',
+  ];
 
-  // Primary frontend URL
+  // Primary frontend URL from env
   if (process.env.FRONTEND_URL) origins.push(process.env.FRONTEND_URL);
 
   // Extra origins (comma separated)
@@ -50,7 +52,7 @@ const getAllowedOrigins = () => {
     process.env.EXTRA_ORIGINS.split(',').forEach(o => origins.push(o.trim()));
   }
 
-  return origins.filter(Boolean);
+  return [...new Set(origins.filter(Boolean))];
 };
 
 const corsOptions = {

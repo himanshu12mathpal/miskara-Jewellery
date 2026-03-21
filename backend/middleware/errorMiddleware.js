@@ -8,6 +8,13 @@ export const errorHandler = (err, req, res, next) => {
   // If headers already sent, delegate to default Express error handler
   if (res.headersSent) return next(err);
 
+  // Ensure CORS headers are present even on error responses
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
   const statusCode = res.statusCode && res.statusCode !== 200
     ? res.statusCode
     : err.status || 500;
