@@ -16,112 +16,108 @@ import reviewRoutes   from './routes/reviewRoutes.js';
 
 dotenv.config();
 
-// Validate required env vars before starting
+// Warn about missing vars — only crash in production
 const REQUIRED_ENV = [
-  'MONGO_URI','JWT_SECRET','CLOUDINARY_CLOUD_NAME',
-  'CLOUDINARY_API_KEY','CLOUDINARY_API_SECRET',
-  'EMAIL_HOST','EMAIL_PORT','EMAIL_USER','EMAIL_PASS',
-  'ADMIN_EMAIL','RAZORPAY_KEY_ID','RAZORPAY_KEY_SECRET',
+  'MONGO_URI', 'JWT_SECRET',
+  'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET',
+  'EMAIL_USER', 'EMAIL_PASS', 'ADMIN_EMAIL',
+  'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET',
   'FRONTEND_URL',
 ];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missing.length) {
-  console.error('❌ Missing env variables:', missing.join(', '));
-  process.exit(1);
+  console.warn('⚠️  Missing env variables:', missing.join(', '));
+  if (process.env.NODE_ENV === 'production') process.exit(1);
 }
 
 connectDB();
 
-const app  = express();
-app.set("trust proxy", 1);
-
-app.get("/api/cron", (req, res) => {
-  console.log("Cron hit hua");
-  res.send("Cron working");
-});
-const isProd = process.env.NODE_ENV === 'production';
+const app     = express();
+const isProd  = process.env.NODE_ENV === 'production';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ── Security headers ──
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-// ── CORS ──
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  ...(process.env.EXTRA_ORIGINS ? process.env.EXTRA_ORIGINS.split(',') : []),
-].filter(Boolean);
+// ── CORS — support multiple frontend origins ──
+const getAllowedOrigins = () => {
+  const origins = [];
+
+  // Primary frontend URL
+  if (process.env.FRONTEND_URL) origins.push(process.env.FRONTEND_URL);
+
+  // Extra origins (comma separated)
+  if (process.env.EXTRA_ORIGINS) {
+    process.env.EXTRA_ORIGINS.split(',').forEach(o => origins.push(o.trim()));
+  }
+
+  return origins.filter(Boolean);
+};
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow requests with no origin (mobile apps, curl, Postman)
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    // Allow requests with no origin (mobile, Postman, server-to-server)
+    if (!origin) return cb(null, true);
+
+    const allowed = getAllowedOrigins();
+
+    // In development allow all
+    if (!isProd) return cb(null, true);
+
+    if (allowed.includes(origin)) return cb(null, true);
+
+    console.warn(`CORS blocked: ${origin} | Allowed: ${allowed.join(', ')}`);
     cb(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
+  methods: ['GET','POST','PUT','DELETE','OPTIONS','PATCH'],
+  allowedHeaders: ['Content-Type','Authorization','X-Requested-With'],
 }));
 
-// ── Body parsers ──
+// Handle preflight
+app.options('*', cors());
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ── Rate limiting ──
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many requests, please try again after 15 minutes.' },
-});
-app.use('/api/', globalLimiter);
+// Rate limiting
+app.use('/api/', rateLimit({ windowMs:15*60*1000, max:300, standardHeaders:true, legacyHeaders:false }));
+app.use('/api/auth/login',           rateLimit({ windowMs:15*60*1000, max:20 }));
+app.use('/api/auth/forgot-password', rateLimit({ windowMs:15*60*1000, max:10 }));
 
-// Stricter limiter for auth routes (prevent brute force)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { message: 'Too many login attempts, please try again after 15 minutes.' },
-});
-app.use('/api/auth/login',          authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
-app.use('/api/auth/reset-password',  authLimiter);
-
-// ── Health check ──
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', env: isProd ? 'production' : 'development', time: new Date().toISOString() });
+  res.json({
+    status:   'ok',
+    time:     new Date().toISOString(),
+    env:      isProd ? 'production' : 'development',
+    origins:  getAllowedOrigins(),
+  });
 });
 
-// ── API Routes ──
+// API Routes
 app.use('/api/auth',     authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders',   orderRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/reviews',  reviewRoutes);
 
-// ── Serve React build in production ──
 if (isProd) {
   const clientBuild = path.join(__dirname, '../frontend/dist');
   app.use(express.static(clientBuild));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientBuild, 'index.html'));
-  });
+  app.get('*', (req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
 } else {
-  app.get('/', (req, res) => res.json({ message: 'Miskara API ✨ — dev mode' }));
+  app.get('/', (req, res) => res.json({ message: 'Miskara API ✨' }));
 }
 
-// ── Error handling ──
 app.use(notFound);
 app.use(errorHandler);
 
-// ── Start ──
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${isProd ? 'PRODUCTION' : 'development'} mode on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT} [${isProd ? 'PRODUCTION' : 'development'}]`);
+  console.log(`📡 Allowed origins: ${getAllowedOrigins().join(', ') || 'ALL (dev mode)'}`);
 });
 
-// ── Unhandled rejections ──
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err.message);
   if (isProd) process.exit(1);
