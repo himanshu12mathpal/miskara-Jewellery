@@ -34,6 +34,11 @@ connectDB();
 
 const app  = express();
 app.set("trust proxy", 1);
+
+app.get("/api/cron", (req, res) => {
+  console.log("Cron hit hua");
+  res.send("Cron working");
+});
 const isProd = process.env.NODE_ENV === 'production';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
