@@ -53,7 +53,7 @@ const getAllowedOrigins = () => {
   return origins.filter(Boolean);
 };
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, cb) => {
     // Allow requests with no origin (mobile, Postman, server-to-server)
     if (!origin) return cb(null, true);
@@ -71,10 +71,12 @@ app.use(cors({
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','OPTIONS','PATCH'],
   allowedHeaders: ['Content-Type','Authorization','X-Requested-With'],
-}));
+};
 
-// Handle preflight
-app.options('*', cors());
+app.use(cors(corsOptions));
+
+// Handle preflight — use same options so origin check is consistent
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
