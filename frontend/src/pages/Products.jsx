@@ -36,6 +36,11 @@ export default function Products() {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
+  // Scroll to top when filters/category changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [searchParams]);
+
   const handleFilterChange = (updates) => {
     const next = new URLSearchParams(searchParams);
     Object.entries(updates).forEach(([k, v]) => v ? next.set(k, v) : next.delete(k));
