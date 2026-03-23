@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -23,41 +23,36 @@ export default function Cart() {
     setShowForm(true);
   };
 
-  const handleVerify = async () => {
-    const { phone, pincode } = shipping;
-
-    // Validate Phone (10-digit Indian)
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-      toast.error('Please enter a valid 10-digit phone number');
-      return;
+  // Auto-verify pincode when 6 digits are entered
+  useEffect(() => {
+    if (shipping.pincode.length === 6 && !isVerified) {
+      handleVerify(shipping.pincode);
     }
+  }, [shipping.pincode]);
 
-    // Validate Pincode
-    if (!/^\d{6}$/.test(pincode)) {
-      toast.error('Please enter a valid 6-digit pincode');
-      return;
-    }
+  const handleVerify = async (pin = shipping.pincode) => {
+    if (!/^\d{6}$/.test(pin)) return;
 
     setVerifying(true);
     try {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
       const data = await res.json();
 
       if (data[0].Status === 'Success') {
         const details = data[0].PostOffice[0];
-        setShipping({
-          ...shipping,
+        setShipping(prev => ({
+          ...prev,
           city:  details.District,
           state: details.State,
-        });
+        }));
         setIsVerified(true);
-        toast.success('Address details verified! ✓');
+        toast.success('Pincode verified! City & State autofilled.');
       } else {
-        toast.error('Invalid pincode. Please check and try again.');
+        toast.error('Invalid pincode. Please check.');
       }
     } catch (err) {
       console.error('Pincode verify error:', err);
-      toast.error('Could not verify pincode. Please try again.');
+      // Silent fail for auto-verify if network is down, user can still type manually
     } finally {
       setVerifying(false);
     }
@@ -242,10 +237,10 @@ export default function Cart() {
                   Shipping Address
                 </p>
                 {[
+                  ['pincode', 'Pincode',         'text'],
                   ['street',  'Street address', 'text'],
                   ['city',    'City',            'text'],
                   ['state',   'State',           'text'],
-                  ['pincode', 'Pincode',         'text'],
                   ['phone',   'Phone number',    'tel'],
                 ].map(([k, ph, type]) => (
                   <input
@@ -266,23 +261,17 @@ export default function Cart() {
                   />
                 ))}
 
-                <button
-                  type="button"
-                  onClick={handleVerify}
-                  disabled={verifying || isVerified}
-                  className={`w-full py-3 rounded-xl font-ui font-bold text-xs transition-all duration-300 ${
-                    isVerified 
-                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default' 
-                      : 'bg-ink text-white hover:bg-forest'
-                  }`}>
-                  {verifying ? 'Verifying...' : isVerified ? 'Verified ✓' : 'Verify Details'}
-                </button>
+                {verifying && (
+                  <p className="font-ui text-[10px] text-forest animate-pulse text-center">
+                    Fetching address details for {shipping.pincode}...
+                  </p>
+                )}
 
                 <button
                   type="submit"
-                  disabled={placing || !isVerified}
+                  disabled={placing || verifying || !shipping.street || shipping.street.length < 5 || !isVerified}
                   className="btn-primary w-full justify-center py-4 mt-2"
-                  style={{ opacity: (placing || !isVerified) ? 0.75 : 1 }}>
+                  style={{ opacity: (placing || !isVerified || verifying) ? 0.75 : 1 }}>
                   {placing ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
