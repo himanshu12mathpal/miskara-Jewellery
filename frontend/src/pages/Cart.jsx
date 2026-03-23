@@ -15,10 +15,52 @@ export default function Cart() {
   const [shipping, setShipping] = useState({ street:'', city:'', state:'', pincode:'', phone:'' });
   const [placing, setPlacing]   = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [verifying, setVerifying]   = useState(false);
 
   const handleCheckout = () => {
     if (!user) { navigate('/login'); return; }
     setShowForm(true);
+  };
+
+  const handleVerify = async () => {
+    const { phone, pincode } = shipping;
+
+    // Validate Phone (10-digit Indian)
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      toast.error('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    // Validate Pincode
+    if (!/^\d{6}$/.test(pincode)) {
+      toast.error('Please enter a valid 6-digit pincode');
+      return;
+    }
+
+    setVerifying(true);
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await res.json();
+
+      if (data[0].Status === 'Success') {
+        const details = data[0].PostOffice[0];
+        setShipping({
+          ...shipping,
+          city:  details.District,
+          state: details.State,
+        });
+        setIsVerified(true);
+        toast.success('Address details verified! ✓');
+      } else {
+        toast.error('Invalid pincode. Please check and try again.');
+      }
+    } catch (err) {
+      console.error('Pincode verify error:', err);
+      toast.error('Could not verify pincode. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const handlePlaceOrder = async (e) => {
@@ -212,16 +254,10 @@ export default function Cart() {
                     className="input-field text-xs py-3"
                     placeholder={ph}
                     value={shipping[k]}
-                   onChange={e => {
-  let value = e.target.value;
-
-  if (k === 'phone') {
-    value = value.replace(/\D/g, '');   // only numbers
-    if (value.length > 10) value = value.slice(0, 10); // max 10 digits
-  }
-
-  setShipping({ ...shipping, [k]: value });
-}}
+                    onChange={e => {
+                      setShipping({ ...shipping, [k]: e.target.value });
+                      setIsVerified(false); // Reset verification on change
+                    }}
                     required
                     minLength={k === 'pincode' ? 6 : 2}
                     maxLength={k === 'pincode' ? 6 : undefined}
@@ -231,10 +267,22 @@ export default function Cart() {
                 ))}
 
                 <button
+                  type="button"
+                  onClick={handleVerify}
+                  disabled={verifying || isVerified}
+                  className={`w-full py-3 rounded-xl font-ui font-bold text-xs transition-all duration-300 ${
+                    isVerified 
+                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default' 
+                      : 'bg-ink text-white hover:bg-forest'
+                  }`}>
+                  {verifying ? 'Verifying...' : isVerified ? 'Verified ✓' : 'Verify Details'}
+                </button>
+
+                <button
                   type="submit"
-                  disabled={placing}
+                  disabled={placing || !isVerified}
                   className="btn-primary w-full justify-center py-4 mt-2"
-                  style={{ opacity: placing ? 0.75 : 1 }}>
+                  style={{ opacity: (placing || !isVerified) ? 0.75 : 1 }}>
                   {placing ? (
                     <span className="flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
