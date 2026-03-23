@@ -181,7 +181,8 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 // ── Reset Password ────────────────────────────────────────────
 export const resetPassword = asyncHandler(async (req, res) => {
   const { otp, password } = req.body;
-  const hashed = crypto.createHash('sha256').update(otp).digest('hex');
+  const rawOtp = String(otp).trim();
+  const hashed = crypto.createHash('sha256').update(rawOtp).digest('hex');
 
   const user = await User.findOne({
     resetPasswordToken:  hashed,
