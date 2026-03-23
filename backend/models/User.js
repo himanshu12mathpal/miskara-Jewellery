@@ -8,12 +8,12 @@ const userSchema = new mongoose.Schema(
     email:    { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true, minlength: 6 },
     role:     { type: String, enum: ['user', 'admin'], default: 'user' },
-    phone:    { type: String, match: [/^[6-9]\d{9}$/, 'Please provide a valid 10-digit phone number'] },
+    phone:    { type: String, match: [/^([6-9]\d{9})?$/, 'Please provide a valid 10-digit phone number'] },
     address:  { 
       street: String, 
       city: String, 
       state: String, 
-      pincode: { type: String, match: [/^\d{6}$/, 'Please provide a valid 6-digit pincode'] } 
+      pincode: { type: String, match: [/^(\d{6})?$/, 'Please provide a valid 6-digit pincode'] } 
     },
 
     // Email verification
