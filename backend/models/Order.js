@@ -16,8 +16,8 @@ const orderSchema = new mongoose.Schema(
       street: { type: String, required: true },
       city: { type: String, required: true },
       state: { type: String, required: true },
-      pincode: { type: String, required: true },
-      phone: { type: String, required: true },
+      pincode: { type: String, required: true, match: [/^\d{6}$/, 'Please provide a valid 6-digit pincode'] },
+      phone: { type: String, required: true, match: [/^[6-9]\d{9}$/, 'Please provide a valid 10-digit phone number'] },
     },
     totalAmount: { type: Number, required: true },
     status: {
