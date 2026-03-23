@@ -155,7 +155,13 @@ export default function Navbar() {
         <div className="md:hidden fixed inset-0 z-40"
           style={{ background:'rgba(248,245,240,0.98)', backdropFilter:'blur(24px)' }}>
           <div className="flex flex-col items-center justify-center h-full gap-8">
-            {[['/', 'Home'], ['/products', 'Collections'], ['/wishlist', 'Favourites'], ['/feedback', 'Contact']].map(([to, label]) => (
+            {[
+              ['/', 'Home'], 
+              ['/products', 'Collections'], 
+              ...(user ? [['/orders', 'My Orders']] : []),
+              ['/wishlist', 'Favourites'], 
+              ['/feedback', 'Contact']
+            ].map(([to, label]) => (
               <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)}
                 className="font-serif italic text-4xl text-ink hover:text-forest transition-colors">
                 {label}
