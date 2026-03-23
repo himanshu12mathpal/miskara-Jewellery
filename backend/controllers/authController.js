@@ -192,7 +192,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   user.password            = password;
   user.resetPasswordToken  = undefined;
   user.resetPasswordExpire = undefined;
-  await user.save();
+  await user.save({ validateBeforeSave: false });
 
   res.json({ message: 'Password reset successful! You can now log in.' });
 });
