@@ -212,7 +212,16 @@ export default function Cart() {
                     className="input-field text-xs py-3"
                     placeholder={ph}
                     value={shipping[k]}
-                    onChange={e => setShipping({ ...shipping, [k]: e.target.value })}
+                   onChange={e => {
+  let value = e.target.value;
+
+  if (k === 'phone') {
+    value = value.replace(/\D/g, '');   // only numbers
+    if (value.length > 10) value = value.slice(0, 10); // max 10 digits
+  }
+
+  setShipping({ ...shipping, [k]: value });
+}}
                     required
                     minLength={k === 'pincode' ? 6 : 2}
                     maxLength={k === 'pincode' ? 6 : undefined}
