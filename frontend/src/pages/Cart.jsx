@@ -98,7 +98,9 @@ export default function Cart() {
 
       } else {
 
-        toast.error('Invalid pincode. Please check.');
+        toast.error('Pincode not found. Please enter address manually.');
+
+        setIsVerified(true); // Allow manual proceed
 
       }
 
@@ -106,7 +108,9 @@ export default function Cart() {
 
       console.error('Pincode verify error:', err);
 
-      // Silent fail for auto-verify if network is down, user can still type manually
+      toast.error('Verification service unavailable. Please enter address manually.');
+
+      setIsVerified(true); // Allow manual proceed
 
     } finally {
 
